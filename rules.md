@@ -1,4 +1,4 @@
-# Sten
+# Stepify
 ## Single page application that displays a list of items (with picture and description).
 
 Tech
