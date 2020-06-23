@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Stepify</title>
+</head>
+<style>
+    body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    h1 {
+        margin: 10px 0 50px;
+        font-size: 2.5em;
+    }
+
+    #counter {
+        background-color: black;
+        color: white;
+        padding: 0 10px;
+        position: absolute;
+        border-radius: 20px;
+        margin: 0 5px;
+    }
+
+    #counter:after {
+        content: 'Steps';
+        position: absolute;
+        left: 20px;
+        top: 40px;
+        color: white;
+        float: right;
+        font-size: 0.5em;
+        offset-rotate: auto;
+        transform: rotate(-20deg);
+        background-color: gray;
+        padding: 2px 5px;
+    }
+
+    #editList {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 5px 10px;
+        background-color: blue;
+        color: white;
+        font-size: 1em;
+        border-radius: 10px;
+        border: none;
+        position: fixed;
+        top: 30px;
+        left: 20px;
+        box-shadow: 0 0 6px 6px rgb(255, 255, 255);
+    }
+
+    #editList:hover {
+        background-color: #5d5dff;
+        cursor: pointer;
+    }
+
+    #addNewItem {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 5px 10px;
+        background-color: green;
+        color: white;
+        border-radius: 10px;
+        border: none;
+        width: 95%;
+        max-width: 360px;
+        font-size: 1.5em;
+        box-shadow: 4px 5px 7px 4px rgb(198, 202, 212);
+    }
+
+    #addNewItem:hover {
+        background-color: #00b500;
+        cursor: copy;
+    }
+
+    ul {
+        padding: 0;
+        margin: 0;
+    }
+
+	ul > li {
+		display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 10px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 10px;
+        border: none;
+        pointer-events: none;
+        box-shadow: 4px 5px 7px 4px rgb(198, 202, 212);
+	}
+
+    ul > li > div {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    ul > li > div > button {
+        background: none;
+        border: none;
+        font-size: 1.5em;
+        cursor: grab;
+    }
+
+    ul > li > div > button:first-child {
+        opacity: 0;
+    }
+
+    .editMode > div > button:first-child {
+        opacity: 100;
+        cursor: grab;
+        pointer-events: auto;
+    }
+
+    ul > li > div > button:last-child {
+        opacity: 0;
+    }
+     
+    .editMode > div > button:last-child {
+        opacity: 100;
+        cursor: pointer;
+        pointer-events: auto;
+        user-drag: none; 
+        user-select: none;
+        -moz-user-select: none;
+        -webkit-user-drag: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        pointer-events: auto;
+    }
+
+
+    ul > li > div > span {
+		border-radius: 10px;
+        border: none;
+        background-color: black;
+        padding: 5px 10px;
+        color: white;
+        margin: 2px;
+        text-align-last: center;
+        font-weight: bold;
+        font-size: 1.5em;
+	}
+
+	ul > li > img {
+		height: 100%;
+        max-width: 320px;
+        min-width: 320px;
+        pointer-events: none;
+        border-radius: 10px;
+        border: none;
+        background-color: white;
+        padding: 2px;
+        margin: 5px;
+	}
+
+    ul > li > p {
+        white-space: pre-line;
+        overflow: auto;
+    }
+
+    #notifications { 
+        padding: 5px 10px;
+        color: white;
+        font-size: 1.2em;
+        border-radius: 10px;
+        position: fixed;
+        bottom: 30px;
+        background-color: #ffc800;
+        box-shadow: 0 0 5px 6px rgb(255, 255, 255);
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0.3s, opacity 0.3s linear;
+        }
+    }
+</style>
+<body>
+	<h1>Stepify <span id="counter"></span></h1>
+    <button id="editList" onclick="toggleEditMode(state)">Edit</button>
+    <button id="addNewItem" onclick="createNewItem(state)">+</button>
+	<ul id="list"></ul>
+    <div id="notifications"></div>
+</body> 
+<script>
+    const state = {
+        mockData: [
+            {
+                id: '63e7e739-ec2b-47b8-8cf3-339ad4def84e',
+                content: 'Cortar la salchicha.',
+                image: 'https://http2.mlstatic.com/D_NQ_NP_645943-MLA41951172111_052020-V.jpg'
+            },
+            {
+                id: '73d83e0d-6113-4771-a369-2f01c86a502a',
+                content: 'Tirar la salchica al plato.',
+                image: 'https://www.oliviascuisine.com/wp-content/uploads/2017/11/fricassee-turkey-sandwiches-IG-320x320.jpg'
+            },
+            {
+                id: '61ce7cb2-6ab2-49f3-b2c5-e2ad2a798313',
+                content: 'Cocinar el plato.',
+                image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcTRUZX9ED2Nr-ymZAk3bxJjFuBp5wmvhOUAHDK7O2e1ZFWlEbHM&usqp=CAU'
+            }
+        ],
+        editMode: false
+    }
+
+	function onDragStart(e = event) {
+        e.dataTransfer.setData("id", e.target.id);
+
+        [...document.querySelectorAll('.editMode')].forEach(item => {
+            item.style.pointerEvents = 'auto';
+        })
+    }
+    
+    function onDragOver(e = event) {
+        e.preventDefault();
+    }
+    
+    function onDragEnd(e = event) {
+        [...document.querySelectorAll('.editMode')].forEach(item => {
+            item.style.pointerEvents = 'none';
+        })
+    }
+
+	function onDrop(e = event, stateData = state) {
+        e.preventDefault();
+
+		let li = e.target.closest('li');
+		let list = document.getElementById('list');
+		let nodes = [...list.children];
+		let index = nodes.indexOf(li);
+
+		let data = document.getElementById(e.dataTransfer.getData("id"));
+        let dataIndex = nodes.indexOf(data);
+
+		if (index === nodes.length-1) {
+			list.appendChild(data);
+		} else {
+			if (dataIndex > index) {
+				list.insertBefore(data, li);
+			} else if (dataIndex < index) {
+				list.insertBefore(data, li.nextSibling);
+			} 
+        }
+
+        updateCounterAndIndexes(stateData.mockData);
+    }
+
+    function renderNewItem(item, itemIndex, state) {
+        let list = document.getElementById('list');
+        let li = document.createElement('li');
+        let actions = document.createElement('div');
+        let move = document.createElement('button');
+        let index = document.createElement('span');
+        let remove = document.createElement('button');
+        let img = document.createElement('img');
+        let content = document.createElement('p');
+
+        move.innerText = '☰';
+        index.innerText = itemIndex;
+        index.classList.add('index');
+        remove.innerText = '❌';
+        remove.onclick = this.removeItem;
+        actions.appendChild(move)
+        actions.appendChild(index) 
+        actions.appendChild(remove)
+        img.src = item.image; 
+        img.draggable = 'false';
+        content.innerText = item.content;
+        content.draggable = 'false';
+ 
+        li.appendChild(actions)
+        li.appendChild(img)
+        li.appendChild(content)
+ 
+        li.id = item.id;
+        li.draggable = 'true'; 
+        li.ondragstart = this.onDragStart;
+        li.ondragover = this.onDragOver;
+        li.ondragend = this.onDragEnd;
+        li.ondrop = this.onDrop;
+        if (state.editMode) li.classList.add('editMode');
+
+        list.append(li);
+
+        updateCounterAndIndexes(state.mockData);
+    }
+
+    function createNewItem(state) {
+        state.mockData.push(state.mockData[0]);
+        renderNewItem(state.mockData[0], state.mockData.length, state);
+        setNotification(`Step ${state.mockData.length} has been created.`, 'green');
+    }
+    
+    function toggleEditMode(state) {
+        let editButton = document.getElementById('editList');
+        state.editMode = !state.editMode;
+
+        if (state.editMode) {
+            let totalItems = [...document.getElementById('list').children];
+            totalItems.forEach(item => {
+                item.classList.add('editMode');
+            })
+
+            editButton.innerText = 'Done editing';
+        } else {
+            let totalItems = [...document.getElementById('list').children];
+            totalItems.forEach(item => {
+                item.classList.remove('editMode');
+            })
+
+            editButton.innerText = 'Edit';
+        }
+    }
+    
+    function updateCounterAndIndexes(data) {
+        let indexes = document.querySelectorAll('.index');
+        let counter = document.getElementById('counter');
+ 
+        indexes.forEach((indexElement, index) => {
+            indexElement.innerText = index+1;
+        })
+        counter.innerText = data.length;
+    }
+
+    function removeItem(e = event, stateData = state) {
+        let itemToDelete = e.target.closest('li');
+
+        let indexToDelete = [...document.getElementById('list').children].indexOf(itemToDelete);
+ 
+        stateData.mockData.splice(indexToDelete, 1);
+        itemToDelete.remove();
+
+        updateCounterAndIndexes(stateData.mockData);
+
+        setNotification(`Step ${indexToDelete+1} has been deleted.`, 'red'); 
+    }
+
+    function setNotification(notificationMessage, status = 'green') {
+        let notificationElement = document.getElementById('notifications');
+
+    
+        if (status === 'yellow') {
+            notificationElement.style.backgroundColor = '#ffc800';
+            notificationElement.style.boxShadow = '0 0 5px 6px rgb(255, 255, 255)';
+        }
+        if (status === 'red') {
+            notificationElement.style.backgroundColor = '#e61d09';
+            notificationElement.style.boxShadow = '0 0 5px 6px #e61d09';
+        }
+        if (status === 'green') {
+            notificationElement.style.backgroundColor = '#26a007';
+            notificationElement.style.boxShadow = '0 0 5px 6px #26a007';
+        }
+
+        clearTimeout(window.notifications);
+        notificationElement.style.visibility = 'hidden';
+        notificationElement.style.opacity = '0';
+        notificationElement.innerText = '';
+
+
+        notificationElement.innerText = notificationMessage;
+        notificationElement.style.visibility = 'visible';
+        notificationElement.style.opacity = '1';
+
+        window.notifications = setTimeout(() => {
+            notificationElement.style.visibility = 'hidden';
+            notificationElement.style.opacity = '0';
+        }, 2000);
+    }
+
+    state.mockData.forEach((item, index) => {
+        renderNewItem(item, index+1, state);
+    })
+
+    updateCounterAndIndexes(state.mockData);
+</script>
+</html>
