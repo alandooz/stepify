@@ -3,7 +3,7 @@
 
 Tech
 - HTML, CSS and Vanilla JavaScript
-- Node.js (maybe Express.js/Deno)
+- Node.js (Express.js)
 - MongoDB
 - Docker with docker-compose.yml (installing all required dependencies)
 

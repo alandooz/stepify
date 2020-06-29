@@ -97,6 +97,8 @@
     border: none;
     pointer-events: none;
     box-shadow: 4px 5px 7px 4px rgb(198, 202, 212);
+    width: min-content;
+    text-align: center;
   }
 
   ul > li > div {
@@ -169,6 +171,16 @@
     overflow: auto;
   }
 
+  ul > li > textarea {
+    width: 100%;
+    text-align: center;
+  }
+
+  .dragHover {
+    border: 2px dashed black;
+    opacity: 50%;
+  }
+
   #notifications {
     padding: 5px 10px;
     color: white;
@@ -182,7 +194,6 @@
     opacity: 0;
     transition: visibility 0.3s, opacity 0.3s linear;
   }
-}
 </style>
 <body>
   <h1>Stepify <span id="counter"></span></h1>
@@ -197,32 +208,45 @@
     {
       id: '63e7e739-ec2b-47b8-8cf3-339ad4def84e',
       content: 'Cortar la salchicha.',
-      image: 'https://http2.mlstatic.com/D_NQ_NP_645943-MLA41951172111_052020-V.jpg'
+      image: true,
+      index: 1
     },
     {
       id: '73d83e0d-6113-4771-a369-2f01c86a502a',
       content: 'Tirar la salchica al plato.',
-      image: 'https://www.oliviascuisine.com/wp-content/uploads/2017/11/fricassee-turkey-sandwiches-IG-320x320.jpg'
+      image: true,
+      index: 2
     },
     {
       id: '61ce7cb2-6ab2-49f3-b2c5-e2ad2a798313',
       content: 'Cocinar el plato.',
-      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcTRUZX9ED2Nr-ymZAk3bxJjFuBp5wmvhOUAHDK7O2e1ZFWlEbHM&usqp=CAU'
+      image: true,
+      index: 3
     }
     ],
     editMode: false
   }
 
   function onDragStart(e = event) {
-    e.dataTransfer.setData("text", e.target.id);
+    if (e.target.tagName === 'LI') {
+      e.dataTransfer.setData("text", e.target.id);
 
-    [...document.querySelectorAll('.editMode')].forEach(item => {
-      item.style.pointerEvents = 'auto';
-    })
+      [...document.querySelectorAll('.editMode')].forEach(item => {
+        item.style.pointerEvents = 'auto';
+      })
+    }
+  }
+
+  function onDragEnter(e = event) {
+    if (e.target.tagName === 'LI') e.target.classList.add('dragHover');
   }
 
   function onDragOver(e = event) {
     e.preventDefault();
+  }
+
+  function onDragLeave(e = event) {
+    if (e.target.tagName === 'LI') e.target.classList.remove('dragHover');
   }
 
   function onDragEnd(e = event) {
@@ -233,6 +257,8 @@
 
   function onDrop(e = event, stateData = state) {
     e.preventDefault();
+
+    e.target.classList.remove('dragHover');
 
     let li = e.target.closest('li');
     let list = document.getElementById('list');
@@ -255,7 +281,9 @@
     updateCounterAndIndexes(stateData.mockData);
   }
 
-  function renderNewItem(item, itemIndex, state) {
+  function renderNewItem(item, state, newitem = true) {
+    if (newitem && !state.editMode) this.toggleEditMode(state);
+
     let list = document.getElementById('list');
     let li = document.createElement('li');
     let actions = document.createElement('div');
@@ -266,17 +294,17 @@
     let content = document.createElement('p');
 
     move.innerText = '☰';
-    index.innerText = itemIndex;
+    index.innerText = item.index;
     index.classList.add('index');
     remove.innerText = '❌';
     remove.onclick = this.removeItem;
     actions.appendChild(move)
     actions.appendChild(index)
     actions.appendChild(remove)
-    img.src = item.image;
-    img.draggable = 'false';
+    item.image && (img.src = `./${item.id}`);
+    img.draggable = false;
     content.innerText = item.content;
-    content.draggable = 'false';
+    content.draggable = false;
 
     li.appendChild(actions)
     li.appendChild(img)
@@ -285,7 +313,9 @@
     li.id = item.id;
     li.draggable = 'true';
     li.ondragstart = this.onDragStart;
+    li.ondragenter = this.onDragEnter;
     li.ondragover = this.onDragOver;
+    li.ondragleave = this.onDragLeave;
     li.ondragend = this.onDragEnd;
     li.ondrop = this.onDrop;
     if (state.editMode) li.classList.add('editMode');
@@ -297,7 +327,7 @@
 
   function createNewItem(state) {
     state.mockData.push(state.mockData[0]);
-    renderNewItem(state.mockData[0], state.mockData.length, state);
+    renderNewItem({...state.mockData[0], index:state.mockData.length}, state);
     setNotification(`Step ${state.mockData.length} has been created.`, 'green');
   }
 
@@ -309,6 +339,13 @@
       let totalItems = [...document.getElementById('list').children];
       totalItems.forEach(item => {
         item.classList.add('editMode');
+
+        let contetElement = item.querySelector('p');
+        let contetText = contetElement.innerText;
+        let contetTextArea = document.createElement('textarea');
+        contetTextArea.style.pointerEvents = 'auto';
+        contetTextArea.value = contetText;
+        contetElement.replaceWith(contetTextArea);
       })
 
       editButton.innerText = 'Done editing';
@@ -316,6 +353,13 @@
       let totalItems = [...document.getElementById('list').children];
       totalItems.forEach(item => {
         item.classList.remove('editMode');
+
+        let contetTextArea = item.querySelector("textarea");
+        let contetText = contetTextArea.value;
+        let contentElement = document.createElement('p');
+        contentElement.style.pointerEvents = 'none';
+        contentElement.innerText = contetText;
+        contetTextArea.replaceWith(contentElement);
       })
 
       editButton.innerText = 'Edit';
@@ -378,8 +422,10 @@
     }, 2000);
   }
 
+  // TODO onchange on ul so when order changes the index and/or all items are mirrored from the dom into the state array, then sent to the server.
+
   state.mockData.forEach((item, index) => {
-    renderNewItem(item, index+1, state);
+    renderNewItem(item, state, false);
   })
 
   updateCounterAndIndexes(state.mockData);
