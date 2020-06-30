@@ -192,36 +192,11 @@
     if (event.target.tagName === 'LI') event.target.classList.remove('dragHover');
   }
 
-  function onDragEnd(event) {
-    let li = event.target.closest('li');
-    console.log('onDragEnd',li)
-  }
-
   function onDrop(event) {
     event.preventDefault();
-
     event.target.classList.remove('dragHover');
 
-    let li = event.target.closest('li');
-    console.log('onDrop',li)
-    let list = document.getElementById('list');
-    let nodes = [...list.children];
-    let index = nodes.indexOf(li);
-
-    let data = document.getElementById(event.dataTransfer.getData("text"));
-    let dataIndex = nodes.indexOf(data);
-
-    if (index === nodes.length-1) {
-      list.appendChild(data);
-    } else {
-      if (dataIndex > index) {
-        list.insertBefore(data, li);
-      } else if (dataIndex < index) {
-        list.insertBefore(data, li.nextSibling);
-      }
-    }
-
-    updateCounterAndIndexes();
+    updateCounterAndIndexes(document.getElementById(event.dataTransfer.getData("text")), event.target.closest('li'));
   }
 
   function createNewItem(item = {}) {
@@ -235,7 +210,7 @@
     const save = document.createElement('button');
     move.innerText = '☰';
     remove.innerText = '❌🗑️';
-    index.innerText = item.id ? item.index : 0;
+    index.innerText = item.id ? item.index+1 : 0;
     edit.innerText = '✏️';
     save.innerText = '✅';
     move.classList.add('move');
@@ -268,6 +243,7 @@
       content.innerText = item.content;
       content.draggable = false;
     } else {
+      content.maxlength = "300";
       content.value = '';
       content.draggable = false;
       content.style.pointerEvents = 'auto';
@@ -283,20 +259,21 @@
     li.ondragenter = this.onDragEnter;
     li.ondragover = this.onDragOver;
     li.ondragleave = this.onDragLeave;
-    li.ondragend = this.onDragEnd;
     li.ondrop = this.onDrop;
-
-    item.id ? list.append(li) : list.insertBefore(li, list.children[0]);
+    console.log(item.index)
+    item.id ? list.children[item.index].replaceWith(li) : list.insertBefore(li, list.children[0]);
 
     !item.id && setNotification(`New step has been created.`, 'green');
   }
 
   function elementToObject(element) {
+    const allSavedItems = [...document.getElementById('list').children].filter(element => element.id);
+
     return {
-      id: element.id,
+      id: element.id || UUID4(),
       content: element.querySelector('p').innerText,
       image: element.querySelector('img').src ? true : false,
-      index: [...document.getElementById('list').children].indexOf(element)
+      index: element.id ? allSavedItems.indexOf(element) : allSavedItems.length
     }
   }
 
@@ -315,6 +292,7 @@
     const contetElement = itemToEdit.querySelector('p');
     const contetText = contetElement.innerText;
     const contetTextArea = document.createElement('textarea');
+    contetTextArea.maxlength = "300";
     contetTextArea.style.pointerEvents = 'auto';
     contetTextArea.value = contetText;
     contetElement.replaceWith(contetTextArea);
@@ -340,10 +318,11 @@
     contetTextArea.replaceWith(contentElement);
 
     if (!itemToSave.id) {
-      itemToSave.parentNode.append(itemToSave);
-      itemToSave.id = UUID4();
-
       const itemToSend = elementToObject(itemToSave);
+      itemToSave.id = itemToSend.id;
+      itemToSave.parentNode.append(itemToSave);
+      itemToSave.querySelector('.index').innerText = itemToSend.index+1;
+
 
       fetch("http://localhost:3000/item", {
         method: 'POST',
@@ -367,38 +346,82 @@
       .then(result => result)
       .catch(error => error);
     }
-
-    updateCounterAndIndexes();
   }
 
-  function updateCounterAndIndexes() {
-    // TODO onchange on ul so when order changes the index and/or all items are mirrored from the dom into the state array, then sent to the server.
+  function updateCounterAndIndexes(elementChangedFrom = null, elementChangedTo = null) {
+    // REMOVE - Index desde ese item para abajo
+    // DRAGANDDROP - Desde Drag hasta Drop
 
-    let counter = document.getElementById('counter');
-    const data = [...document.getElementById('list').children].filter(element => element.id);
-    let indexes = data.map(element => element.querySelector('.index'));
-    console.log(indexes)
+    const range = (start, end) => {
+      if (start <= end) {
+        return Array.from('x'.repeat(end - start + 1), (_, i) => start + i)
+      } else {
+        return Array.from('x'.repeat(start - end + 1), (_, i) => start - i)
+      }
+    };
 
+    const list = document.getElementById('list');
+    const nodes = [...list.children];
+    const allItems = [...document.getElementById('list').children].filter(element => element.id);
+    const indexChangedFrom = (elementChangedFrom && elementChangedFrom.index)|| nodes.indexOf(elementChangedFrom);
+    const indexChangedTo = (elementChangedFrom && elementChangedTo.index) || nodes.indexOf(elementChangedTo);
+
+
+    if (elementChangedFrom && elementChangedTo && indexChangedFrom !== indexChangedTo) {
+      let updatedIndexes;
+
+      if (indexChangedTo === nodes.length-1) {
+        list.appendChild(elementChangedFrom);
+        updatedIndexes = range(indexChangedFrom, nodes.length-1);
+      } else {
+        if (indexChangedFrom > indexChangedTo) {
+          elementChangedFrom.id && list.insertBefore(elementChangedFrom, elementChangedTo);
+          updatedIndexes = range(indexChangedFrom, indexChangedTo);
+        } else if (indexChangedFrom < indexChangedTo) {
+          elementChangedFrom.id && llist.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
+          updatedIndexes = range(indexChangedFrom, indexChangedTo);
+        }
+      }
+
+      // const updatedItemsFixed = [
+      //   {
+      //     idToUpdate: "61ce7cb2-6ab2-49f3-b2c5-e2ad2a798313",
+      //     newIndex: 0
+      //   },
+      //   {
+      //     idToUpdate: "73d83e0d-6113-4771-a369-2f01c86a502a",
+      //     newIndex: 1
+      //   }
+      // ]
+
+      //ERROR: Tomando como ejemplo updatedItemsFixed, sí anda, pero no quiere funcionar con el map, tira siempre nModified: 0.
+      const updatedItems = updatedIndexes.map(index => ({
+        idToUpdate: allItems[index].id,
+        newIndex: index
+      }))
+
+      fetch("http://localhost:3000/item", {
+        method: 'PATCH',
+        headers: new Headers({ "Content-Type": "application/json" }),
+        body: JSON.stringify(updatedItems),
+        redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => console.log(result))
+      .catch(error => error);
+    }
+
+    const data = nodes.filter(element => element.id);
+    const indexes = data.map(element => element.querySelector('.index'));
     indexes.forEach((indexElement, index) => {
-      console.log(indexElement, index)
       indexElement.innerText = index+1;
     })
-    counter.innerText = data.length;
-
-    // if (index === nodes.length-1) {
-    //   list.appendChild(data);
-    // } else {
-    //   if (dataIndex > index) {
-    //     list.insertBefore(data, li);
-    //   } else if (dataIndex < index) {
-    //     list.insertBefore(data, li.nextSibling);
-    //   }
-    // }
   }
 
   function removeItem(event) {
     const itemToDelete = event.target.closest('li');
-    const indexToDelete = [...document.getElementById('list').children].indexOf(itemToDelete);
+    const allItems = [...document.getElementById('list').children].filter(element => element.id);
+    const indexToDelete = allItems.indexOf(itemToDelete);
 
     if (itemToDelete.id) {
       fetch(`http://localhost:3000/item/${itemToDelete.id}`, {
@@ -410,11 +433,9 @@
       .catch(error => console.log('error', error));
     }
 
-    itemToDelete.remove();
-
     setNotification(itemToDelete.id ? `Step ${indexToDelete+1} has been deleted.` : 'New step has been deleted.' , 'red');
-
-    updateCounterAndIndexes();
+    itemToDelete.remove();
+    itemToDelete.id && updateCounterAndIndexes({index: indexToDelete}, {index: allItems.length-1});
   }
 
   function setNotification(notificationMessage, status = 'green') {
@@ -459,8 +480,16 @@
     .catch(error => error);
 
     data.forEach(item => {
+      document.getElementById('list').appendChild(document.createElement('li'));
+    })
+    data.forEach(item => {
       createNewItem(item);
     })
+
+    document.getElementById('counter').innerText = data.length;
+    document.getElementById('list').addEventListener("change", () => {
+      document.getElementById('counter').innerText = [...document.getElementById('list').children].filter(element => element.id).length+1;
+    });
 
     updateCounterAndIndexes();
   }

@@ -44,9 +44,10 @@ app.post('/item', async (req, res) => {
 })
 
 app.patch('/item', async (req, res) => {
+  console.log('ENTROPATCH')
   const itemsToUpdate = req.body
-
   const response = await connectMongo(updateElements, 'items', itemsToUpdate).catch(error => error)
+  console.log(response)
   res.send(response)
 })
 
