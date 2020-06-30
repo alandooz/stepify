@@ -260,7 +260,6 @@
     li.ondragover = this.onDragOver;
     li.ondragleave = this.onDragLeave;
     li.ondrop = this.onDrop;
-    console.log(item.index)
     item.id ? list.children[item.index].replaceWith(li) : list.insertBefore(li, list.children[0]);
 
     !item.id && setNotification(`New step has been created.`, 'green');
@@ -349,9 +348,6 @@
   }
 
   function updateCounterAndIndexes(elementChangedFrom = null, elementChangedTo = null) {
-    // REMOVE - Index desde ese item para abajo
-    // DRAGANDDROP - Desde Drag hasta Drop
-
     const range = (start, end) => {
       if (start <= end) {
         return Array.from('x'.repeat(end - start + 1), (_, i) => start + i)
@@ -367,15 +363,15 @@
     const indexChangedTo = (elementChangedFrom && elementChangedTo.index) || nodes.indexOf(elementChangedTo);
 
 
-    if (elementChangedFrom && elementChangedTo && indexChangedFrom !== indexChangedTo) {
+    if (elementChangedFrom && elementChangedTo && ((indexChangedFrom.id && indexChangedFrom !== indexChangedTo) || !indexChangedFrom.id)) {
       let updatedIndexes;
 
-      if (indexChangedTo === nodes.length-1) {
+      if (indexChangedTo === nodes.length-1 && elementChangedFrom.id) {
         list.appendChild(elementChangedFrom);
-        updatedIndexes = range(indexChangedFrom, nodes.length-1);
+        updatedIndexes = range(indexChangedFrom, allItems-1);
       } else {
         if (indexChangedFrom > indexChangedTo) {
-          elementChangedFrom.id && list.insertBefore(elementChangedFrom, elementChangedTo);
+          list.insertBefore(elementChangedFrom, elementChangedTo);
           updatedIndexes = range(indexChangedFrom, indexChangedTo);
         } else if (indexChangedFrom < indexChangedTo) {
           elementChangedFrom.id && llist.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
@@ -395,6 +391,8 @@
       // ]
 
       //ERROR: Tomando como ejemplo updatedItemsFixed, sí anda, pero no quiere funcionar con el map, tira siempre nModified: 0.
+      console.log(allItems)
+      console.log(updatedIndexes)
       const updatedItems = updatedIndexes.map(index => ({
         idToUpdate: allItems[index].id,
         newIndex: index
@@ -435,7 +433,7 @@
 
     setNotification(itemToDelete.id ? `Step ${indexToDelete+1} has been deleted.` : 'New step has been deleted.' , 'red');
     itemToDelete.remove();
-    itemToDelete.id && updateCounterAndIndexes({index: indexToDelete}, {index: allItems.length-1});
+    itemToDelete.id && updateCounterAndIndexes({index: indexToDelete}, {index: allItems.length-2});
   }
 
   function setNotification(notificationMessage, status = 'green') {

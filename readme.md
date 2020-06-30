@@ -1,13 +1,32 @@
 # Stepify
-## Single page application that displays a list of items (with picture and description).
+Single page application that displays a list of items (with picture and description).
 
-Tech
+## Start
+Install proyect
+```bash
+npm install
+```
+Start server
+```bash
+npm install
+```
+
+## Structure
+### app.js
+Backend
+### index.html
+Frontend
+
+## Endpoints
+[View on public Postman link](https://documenter.getpostman.com/view/11531662/T17DfoQN?version=latest)
+
+## Tech
 - HTML, CSS and Vanilla JavaScript
-- Node.js (Express.js)
+- Node.js (maybe Express.js/Deno)
 - MongoDB
 - Docker with docker-compose.yml (installing all required dependencies)
 
-Requirements
+## Requirements
 1. Sort the items on the list using a drag and drop functionality.
 2. Counter in the page that shows how many items are being displayed.
 3. Each item: Edit allows a user to update the image of an item and the description text. Delete allows a user to remove an item from the list and update the counter.
