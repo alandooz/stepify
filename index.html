@@ -40,27 +40,6 @@
     padding: 2px 5px;
   }
 
-  #editList {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 5px 10px;
-    background-color: blue;
-    color: white;
-    font-size: 1em;
-    border-radius: 10px;
-    border: none;
-    position: fixed;
-    top: 30px;
-    left: 20px;
-    box-shadow: 0 0 6px 6px rgb(255, 255, 255);
-  }
-
-  #editList:hover {
-    background-color: #5d5dff;
-    cursor: pointer;
-  }
-
   #addNewItem {
     display: flex;
     flex-direction: column;
@@ -95,7 +74,6 @@
     background-color: white;
     border-radius: 10px;
     border: none;
-    pointer-events: none;
     box-shadow: 4px 5px 7px 4px rgb(198, 202, 212);
     width: min-content;
     text-align: center;
@@ -113,34 +91,6 @@
     font-size: 1.5em;
     cursor: grab;
   }
-
-  ul > li > div > button:first-child {
-    opacity: 0;
-  }
-
-  .editMode > div > button:first-child {
-    opacity: 100;
-    cursor: grab;
-    pointer-events: auto;
-  }
-
-  ul > li > div > button:last-child {
-    opacity: 0;
-  }
-
-  .editMode > div > button:last-child {
-    opacity: 100;
-    cursor: pointer;
-    pointer-events: auto;
-    user-drag: none;
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-drag: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    pointer-events: auto;
-  }
-
 
   ul > li > div > span {
     border-radius: 10px;
@@ -181,6 +131,21 @@
     opacity: 50%;
   }
 
+  .move, .remove, .edit, .save {
+    display: none;
+    pointer-events: none;
+  }
+
+  .actionActive {
+    display: block;
+    pointer-events: auto;
+  }
+
+  .actionActive:hover {
+    border-radius: 10px;
+    background-color: rgb(228, 228, 228);
+  }
+
   #notifications {
     padding: 5px 10px;
     color: white;
@@ -197,75 +162,53 @@
 </style>
 <body>
   <h1>Stepify <span id="counter"></span></h1>
-  <button id="editList" onclick="toggleEditMode(state)">Edit</button>
-  <button id="addNewItem" onclick="createNewItem(state)">+</button>
+  <button id="addNewItem" onclick="createNewItem()">+</button>
   <ul id="list"></ul>
   <div id="notifications"></div>
 </body>
 <script>
-  const state = {
-    mockData: [
-    {
-      id: '63e7e739-ec2b-47b8-8cf3-339ad4def84e',
-      content: 'Cortar la salchicha.',
-      image: true,
-      index: 1
-    },
-    {
-      id: '73d83e0d-6113-4771-a369-2f01c86a502a',
-      content: 'Tirar la salchica al plato.',
-      image: true,
-      index: 2
-    },
-    {
-      id: '61ce7cb2-6ab2-49f3-b2c5-e2ad2a798313',
-      content: 'Cocinar el plato.',
-      image: true,
-      index: 3
-    }
-    ],
-    editMode: false
+  const UUID4 = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
-  function onDragStart(e = event) {
-    if (e.target.tagName === 'LI') {
-      e.dataTransfer.setData("text", e.target.id);
-
-      [...document.querySelectorAll('.editMode')].forEach(item => {
-        item.style.pointerEvents = 'auto';
-      })
+  function onDragStart(event) {
+    if (event.target.tagName === 'LI') {
+      event.dataTransfer.setData("text", event.target.id);
     }
   }
 
-  function onDragEnter(e = event) {
-    if (e.target.tagName === 'LI') e.target.classList.add('dragHover');
+  function onDragEnter(event) {
+    if (event.target.tagName === 'LI') event.target.classList.add('dragHover');
   }
 
-  function onDragOver(e = event) {
-    e.preventDefault();
+  function onDragOver(event) {
+    event.preventDefault();
   }
 
-  function onDragLeave(e = event) {
-    if (e.target.tagName === 'LI') e.target.classList.remove('dragHover');
+  function onDragLeave(event) {
+    if (event.target.tagName === 'LI') event.target.classList.remove('dragHover');
   }
 
-  function onDragEnd(e = event) {
-    [...document.querySelectorAll('.editMode')].forEach(item => {
-      item.style.pointerEvents = 'none';
-    })
+  function onDragEnd(event) {
+    let li = event.target.closest('li');
+    console.log('onDragEnd',li)
   }
 
-  function onDrop(e = event, stateData = state) {
-    e.preventDefault();
+  function onDrop(event) {
+    event.preventDefault();
 
-    e.target.classList.remove('dragHover');
+    event.target.classList.remove('dragHover');
 
-    let li = e.target.closest('li');
+    let li = event.target.closest('li');
+    console.log('onDrop',li)
     let list = document.getElementById('list');
     let nodes = [...list.children];
     let index = nodes.indexOf(li);
 
-    let data = document.getElementById(e.dataTransfer.getData("text"));
+    let data = document.getElementById(event.dataTransfer.getData("text"));
     let dataIndex = nodes.indexOf(data);
 
     if (index === nodes.length-1) {
@@ -278,39 +221,63 @@
       }
     }
 
-    updateCounterAndIndexes(stateData.mockData);
+    updateCounterAndIndexes();
   }
 
-  function renderNewItem(item, state, newitem = true) {
-    if (newitem && !state.editMode) this.toggleEditMode(state);
+  function createNewItem(item = {}) {
+    const list = document.getElementById('list');
 
-    let list = document.getElementById('list');
-    let li = document.createElement('li');
-    let actions = document.createElement('div');
-    let move = document.createElement('button');
-    let index = document.createElement('span');
-    let remove = document.createElement('button');
-    let img = document.createElement('img');
-    let content = document.createElement('p');
-
+    const actions = document.createElement('div');
+    const move = document.createElement('button');
+    const remove = document.createElement('button');
+    const index = document.createElement('span');
+    const edit = document.createElement('button');
+    const save = document.createElement('button');
     move.innerText = '☰';
-    index.innerText = item.index;
+    remove.innerText = '❌🗑️';
+    index.innerText = item.id ? item.index : 0;
+    edit.innerText = '✏️';
+    save.innerText = '✅';
+    move.classList.add('move');
+    remove.classList.add('remove');
     index.classList.add('index');
-    remove.innerText = '❌';
+    edit.classList.add('edit');
+    save.classList.add('save');
+    if (item.id) {
+      move.classList.add('actionActive');
+      edit.classList.add('actionActive');
+    } else {
+      remove.classList.add('actionActive');
+      save.classList.add('actionActive');
+    }
     remove.onclick = this.removeItem;
+    edit.onclick = this.editItem;
+    save.onclick = this.saveItem;
     actions.appendChild(move)
-    actions.appendChild(index)
     actions.appendChild(remove)
+    actions.appendChild(index)
+    actions.appendChild(edit)
+    actions.appendChild(save)
+
+    const img = document.createElement('img');
     item.image && (img.src = `./${item.id}`);
     img.draggable = false;
-    content.innerText = item.content;
-    content.draggable = false;
 
+    const content = item.id ? document.createElement('p') : document.createElement('textarea');
+    if (item.id) {
+      content.innerText = item.content;
+      content.draggable = false;
+    } else {
+      content.value = '';
+      content.draggable = false;
+      content.style.pointerEvents = 'auto';
+    }
+
+    const li = document.createElement('li');
     li.appendChild(actions)
     li.appendChild(img)
     li.appendChild(content)
-
-    li.id = item.id;
+    item.id && (li.id = item.id);
     li.draggable = 'true';
     li.ondragstart = this.onDragStart;
     li.ondragenter = this.onDragEnter;
@@ -318,80 +285,140 @@
     li.ondragleave = this.onDragLeave;
     li.ondragend = this.onDragEnd;
     li.ondrop = this.onDrop;
-    if (state.editMode) li.classList.add('editMode');
 
-    list.append(li);
+    item.id ? list.append(li) : list.insertBefore(li, list.children[0]);
 
-    updateCounterAndIndexes(state.mockData);
+    !item.id && setNotification(`New step has been created.`, 'green');
   }
 
-  function createNewItem(state) {
-    state.mockData.push(state.mockData[0]);
-    renderNewItem({...state.mockData[0], index:state.mockData.length}, state);
-    setNotification(`Step ${state.mockData.length} has been created.`, 'green');
-  }
-
-  function toggleEditMode(state) {
-    let editButton = document.getElementById('editList');
-    state.editMode = !state.editMode;
-
-    if (state.editMode) {
-      let totalItems = [...document.getElementById('list').children];
-      totalItems.forEach(item => {
-        item.classList.add('editMode');
-
-        let contetElement = item.querySelector('p');
-        let contetText = contetElement.innerText;
-        let contetTextArea = document.createElement('textarea');
-        contetTextArea.style.pointerEvents = 'auto';
-        contetTextArea.value = contetText;
-        contetElement.replaceWith(contetTextArea);
-      })
-
-      editButton.innerText = 'Done editing';
-    } else {
-      let totalItems = [...document.getElementById('list').children];
-      totalItems.forEach(item => {
-        item.classList.remove('editMode');
-
-        let contetTextArea = item.querySelector("textarea");
-        let contetText = contetTextArea.value;
-        let contentElement = document.createElement('p');
-        contentElement.style.pointerEvents = 'none';
-        contentElement.innerText = contetText;
-        contetTextArea.replaceWith(contentElement);
-      })
-
-      editButton.innerText = 'Edit';
+  function elementToObject(element) {
+    return {
+      id: element.id,
+      content: element.querySelector('p').innerText,
+      image: element.querySelector('img').src ? true : false,
+      index: [...document.getElementById('list').children].indexOf(element)
     }
   }
 
-  function updateCounterAndIndexes(data) {
-    let indexes = document.querySelectorAll('.index');
+  function editItem(event) {
+    const itemToEdit = event.target.closest('li');
+    const move = itemToEdit.querySelector('.move');
+    const remove = itemToEdit.querySelector('.remove');
+    const edit = itemToEdit.querySelector('.edit');
+    const save = itemToEdit.querySelector('.save');
+
+    move.classList.toggle('actionActive')
+    remove.classList.toggle('actionActive')
+    edit.classList.toggle('actionActive')
+    save.classList.toggle('actionActive')
+
+    const contetElement = itemToEdit.querySelector('p');
+    const contetText = contetElement.innerText;
+    const contetTextArea = document.createElement('textarea');
+    contetTextArea.style.pointerEvents = 'auto';
+    contetTextArea.value = contetText;
+    contetElement.replaceWith(contetTextArea);
+  }
+
+  function saveItem(event) {
+    const itemToSave = event.target.closest('li');
+    const move = itemToSave.querySelector('.move');
+    const remove = itemToSave.querySelector('.remove');
+    const edit = itemToSave.querySelector('.edit');
+    const save = itemToSave.querySelector('.save');
+
+    move.classList.toggle('actionActive')
+    remove.classList.toggle('actionActive')
+    edit.classList.toggle('actionActive')
+    save.classList.toggle('actionActive')
+
+    let contetTextArea = itemToSave.querySelector("textarea");
+    let contetText = contetTextArea.value;
+    let contentElement = document.createElement('p');
+    contentElement.style.pointerEvents = 'none';
+    contentElement.innerText = contetText;
+    contetTextArea.replaceWith(contentElement);
+
+    if (!itemToSave.id) {
+      itemToSave.parentNode.append(itemToSave);
+      itemToSave.id = UUID4();
+
+      const itemToSend = elementToObject(itemToSave);
+
+      fetch("http://localhost:3000/item", {
+        method: 'POST',
+        headers: new Headers({ "Content-Type": "application/json" }),
+        body: JSON.stringify(itemToSend),
+        redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => result)
+      .catch(error => error);
+    } else {
+      const { id, ...itemToSend } = elementToObject(itemToSave);
+
+      fetch(`http://localhost:3000/item/${id}`, {
+        method: 'PUT',
+        headers: new Headers({ "Content-Type": "application/json" }),
+        body: JSON.stringify(itemToSend),
+        redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => result)
+      .catch(error => error);
+    }
+
+    updateCounterAndIndexes();
+  }
+
+  function updateCounterAndIndexes() {
+    // TODO onchange on ul so when order changes the index and/or all items are mirrored from the dom into the state array, then sent to the server.
+
     let counter = document.getElementById('counter');
+    const data = [...document.getElementById('list').children].filter(element => element.id);
+    let indexes = data.map(element => element.querySelector('.index'));
+    console.log(indexes)
 
     indexes.forEach((indexElement, index) => {
+      console.log(indexElement, index)
       indexElement.innerText = index+1;
     })
     counter.innerText = data.length;
+
+    // if (index === nodes.length-1) {
+    //   list.appendChild(data);
+    // } else {
+    //   if (dataIndex > index) {
+    //     list.insertBefore(data, li);
+    //   } else if (dataIndex < index) {
+    //     list.insertBefore(data, li.nextSibling);
+    //   }
+    // }
   }
 
-  function removeItem(e = event, stateData = state) {
-    let itemToDelete = e.target.closest('li');
+  function removeItem(event) {
+    const itemToDelete = event.target.closest('li');
+    const indexToDelete = [...document.getElementById('list').children].indexOf(itemToDelete);
 
-    let indexToDelete = [...document.getElementById('list').children].indexOf(itemToDelete);
+    if (itemToDelete.id) {
+      fetch(`http://localhost:3000/item/${itemToDelete.id}`, {
+        method: 'DELETE',
+        redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => console.log(result))
+      .catch(error => console.log('error', error));
+    }
 
-    stateData.mockData.splice(indexToDelete, 1);
     itemToDelete.remove();
 
-    updateCounterAndIndexes(stateData.mockData);
+    setNotification(itemToDelete.id ? `Step ${indexToDelete+1} has been deleted.` : 'New step has been deleted.' , 'red');
 
-    setNotification(`Step ${indexToDelete+1} has been deleted.`, 'red');
+    updateCounterAndIndexes();
   }
 
   function setNotification(notificationMessage, status = 'green') {
     let notificationElement = document.getElementById('notifications');
-
 
     if (status === 'yellow') {
       notificationElement.style.backgroundColor = '#ffc800';
@@ -422,12 +449,22 @@
     }, 2000);
   }
 
-  // TODO onchange on ul so when order changes the index and/or all items are mirrored from the dom into the state array, then sent to the server.
+  const start = async () => {
+    const data = await fetch("http://localhost:3000", {
+      method: 'GET',
+      redirect: 'follow'
+    })
+    .then(response => response.json())
+    .then(result => result)
+    .catch(error => error);
 
-  state.mockData.forEach((item, index) => {
-    renderNewItem(item, state, false);
-  })
+    data.forEach(item => {
+      createNewItem(item);
+    })
 
-  updateCounterAndIndexes(state.mockData);
+    updateCounterAndIndexes();
+  }
+
+  start()
 </script>
 </html>

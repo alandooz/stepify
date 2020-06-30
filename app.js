@@ -5,6 +5,12 @@ const app = express()
 const port = 3000
 
 app.use(express.json())
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "http://localhost:5500");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "*");
+  next();
+});
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
 
 app.get('/', async (req, res) => {
@@ -20,10 +26,11 @@ app.get('/', async (req, res) => {
     return items
   }).catch(error => error)
 
+  res.set('Access-Control-Allow-Origin', '*');
   res.send(response)
 })
 
-app.post('/', async (req, res) => {
+app.post('/item', async (req, res) => {
   const itemToAdd = req.body
 
    if (itemToAdd.id) {
@@ -33,6 +40,13 @@ app.post('/', async (req, res) => {
   }
 
   const response = await connectMongo(addElement, 'items', itemToAdd).catch(error => error)
+  res.send(response)
+})
+
+app.patch('/item', async (req, res) => {
+  const itemsToUpdate = req.body
+
+  const response = await connectMongo(updateElements, 'items', itemsToUpdate).catch(error => error)
   res.send(response)
 })
 
@@ -49,7 +63,7 @@ app.delete('/item/:id', async (req, res) => {
 })
 
 app.get('/image/:id', async (req, res) => {
-  const imageToFind = { _id: req.body}
+  const imageToFind = { _id: req.params.id}
   const response = await connectMongo(findElement, 'images', imageToFind).catch(error => error)
   res.send(response)
 })
@@ -103,4 +117,26 @@ const replaceElement = async (dbCollection, replaceElement, db) => {
   const collection = db.collection(dbCollection);
   const replaced = await collection.replaceOne(replaceElement.idToReplace, replaceElement.replaceWith).then(response => response).catch(error => error);
   return replaced;
+}
+
+const updateElement = async (dbCollection, updateElement, db) => {
+  const collection = db.collection(dbCollection);
+  const replaced = await collection.updateOne(updateElement.idToUpdate, updateElement.updateWith).then(response => response).catch(error => error);
+  return replaced;
+}
+
+const updateElements = async (dbCollection, updateElements) => {
+
+  const updated = await Promise.all(updateElements.map(async (element) => {
+    const itemToUpdate = {
+      idToUpdate: { _id: element.idToUpdate },
+      updateWith: { $set: { index: element.newIndex } },
+    }
+
+    const response = await connectMongo(updateElement, dbCollection, itemToUpdate).then(response => response.result).catch(error => error);
+
+    return response;
+  }));
+
+  return await updated;
 }
