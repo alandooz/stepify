@@ -9,6 +9,7 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "http://localhost:5500");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header("Access-Control-Allow-Methods", "*");
+  res.header("Access-Control-Max-Age", "86400");
   next();
 });
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
@@ -44,10 +45,9 @@ app.post('/item', async (req, res) => {
 })
 
 app.patch('/item', async (req, res) => {
-  console.log('ENTROPATCH')
   const itemsToUpdate = req.body
+  console.log(itemsToUpdate)
   const response = await connectMongo(updateElements, 'items', itemsToUpdate).catch(error => error)
-  console.log(response)
   res.send(response)
 })
 

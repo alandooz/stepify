@@ -193,10 +193,13 @@
   }
 
   function onDrop(event) {
+    const from = document.getElementById(event.dataTransfer.getData("text"));
+    const to = event.target.closest('li');
+
     event.preventDefault();
     event.target.classList.remove('dragHover');
 
-    updateCounterAndIndexes(document.getElementById(event.dataTransfer.getData("text")), event.target.closest('li'));
+    from != to && updateCounterAndIndexes(from, to);
   }
 
   function createNewItem(item = {}) {
@@ -359,45 +362,50 @@
     const list = document.getElementById('list');
     const nodes = [...list.children];
     const allItems = [...document.getElementById('list').children].filter(element => element.id);
+    const data = allItems.filter(element => element.id);
+    const indexes = data.map(element => element.querySelector('.index'));
     const indexChangedFrom = (elementChangedFrom && elementChangedFrom.index)|| nodes.indexOf(elementChangedFrom);
     const indexChangedTo = (elementChangedFrom && elementChangedTo.index) || nodes.indexOf(elementChangedTo);
 
-
     if (elementChangedFrom && elementChangedTo && ((indexChangedFrom.id && indexChangedFrom !== indexChangedTo) || !indexChangedFrom.id)) {
       let updatedIndexes;
+      let updatedItems;
 
-      if (indexChangedTo === nodes.length-1 && elementChangedFrom.id) {
+      if (indexChangedTo === nodes.length-1) {
         list.appendChild(elementChangedFrom);
-        updatedIndexes = range(indexChangedFrom, allItems-1);
+        updatedIndexes = range(indexChangedFrom, allItems.length-1);
       } else {
         if (indexChangedFrom > indexChangedTo) {
           list.insertBefore(elementChangedFrom, elementChangedTo);
           updatedIndexes = range(indexChangedFrom, indexChangedTo);
         } else if (indexChangedFrom < indexChangedTo) {
-          elementChangedFrom.id && llist.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
+          elementChangedFrom.id && list.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
           updatedIndexes = range(indexChangedFrom, indexChangedTo);
         }
       }
 
-      // const updatedItemsFixed = [
+      // const updatedItems = [
       //   {
-      //     idToUpdate: "61ce7cb2-6ab2-49f3-b2c5-e2ad2a798313",
-      //     newIndex: 0
+      //     idToUpdate: "4c9302c8-8955-4975-8d64-cb8aced54e78",
+      //     newIndex: 3
       //   },
       //   {
-      //     idToUpdate: "73d83e0d-6113-4771-a369-2f01c86a502a",
-      //     newIndex: 1
+      //     idToUpdate: "edd775b9-36d6-4921-80c2-64813897fab4",
+      //     newIndex: 2
       //   }
       // ]
 
       //ERROR: Tomando como ejemplo updatedItemsFixed, sí anda, pero no quiere funcionar con el map, tira siempre nModified: 0.
+
       console.log(allItems)
       console.log(updatedIndexes)
-      const updatedItems = updatedIndexes.map(index => ({
+
+      updatedItems = updatedIndexes.map(index => ({
         idToUpdate: allItems[index].id,
         newIndex: index
       }))
 
+      console.log(updatedItems)
       fetch("http://localhost:3000/item", {
         method: 'PATCH',
         headers: new Headers({ "Content-Type": "application/json" }),
@@ -409,8 +417,6 @@
       .catch(error => error);
     }
 
-    const data = nodes.filter(element => element.id);
-    const indexes = data.map(element => element.querySelector('.index'));
     indexes.forEach((indexElement, index) => {
       indexElement.innerText = index+1;
     })
