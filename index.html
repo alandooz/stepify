@@ -131,12 +131,12 @@
     opacity: 50%;
   }
 
-  .move, .remove, .edit, .save {
+  .move, .remove, .cancel, .edit, .save, li p, li textarea, input, img {
     display: none;
     pointer-events: none;
   }
 
-  .actionActive {
+  .actionActive, .active {
     display: block;
     pointer-events: auto;
   }
@@ -144,6 +144,15 @@
   .actionActive:hover {
     border-radius: 10px;
     background-color: rgb(228, 228, 228);
+  }
+
+  .unselectable {
+    user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
   }
 
   #notifications {
@@ -174,32 +183,67 @@
     });
   }
 
+  function makeUnselectable(element) {
+    element.classList.add('unselectable')
+    element.draggable = false;
+    element.onDragStart = () => false;
+  }
+
   function onDragStart(event) {
-    if (event.target.tagName === 'LI') {
-      event.dataTransfer.setData("text", event.target.id);
+    if ([...event.target.classList].includes('move')) {
+      event.dataTransfer.setData("text", event.target.closest('li').id);
+      event.dataTransfer.setDragImage(event.target.closest('li'), 1, 1);
+
+      childrenDeep(document.getElementById('list')).forEach(element => {
+        if (!element.id && (!element.className.includes('move') || element != event.target)) {
+          element.style.pointerEvents = 'none';
+        }
+      })
     }
   }
 
   function onDragEnter(event) {
-    if (event.target.tagName === 'LI') event.target.classList.add('dragHover');
+    if (event.target.closest('li').id && event.target.tagName === 'LI') event.target.classList.add('dragHover');
   }
 
   function onDragOver(event) {
-    event.preventDefault();
+    if (event.target.closest('li').id && event.target.tagName === 'LI') {
+      event.preventDefault();
+    }
   }
 
   function onDragLeave(event) {
-    if (event.target.tagName === 'LI') event.target.classList.remove('dragHover');
+    if (event.target.closest('li').id && event.target.tagName === 'LI') event.target.classList.remove('dragHover');
   }
 
   function onDrop(event) {
     const from = document.getElementById(event.dataTransfer.getData("text"));
     const to = event.target.closest('li');
 
-    event.preventDefault();
-    event.target.classList.remove('dragHover');
+    if (to.id) {
+      event.preventDefault();
+      event.target.classList.remove('dragHover');
+      from != to && updateCounterAndIndexes(from, to);
+    } else if (event.target.tagName === 'TEXTAREA') {
+      event.preventDefault();
+    }
+  }
 
-    from != to && updateCounterAndIndexes(from, to);
+  function onDragEnd(event) {
+    childrenDeep(document.getElementById('list')).forEach(element => {
+      if ([...element.classList].some(className => ['actions', 'move', 'remove', 'cancel', 'edit', 'save', 'textarea', 'input'].includes(className)) || element.id) {
+        element.style.pointerEvents = 'auto';
+      }
+    })
+  }
+
+  function childrenDeep(element) {
+    let all = [];
+    [...element.children].forEach(child => {
+      all.push(child);
+      if (child.children) all = [...all, ...childrenDeep(child)];
+    })
+    return all;
   }
 
   function createNewItem(item = {}) {
@@ -208,16 +252,20 @@
     const actions = document.createElement('div');
     const move = document.createElement('button');
     const remove = document.createElement('button');
+    // const cancel = document.createElement('button');
     const index = document.createElement('span');
     const edit = document.createElement('button');
     const save = document.createElement('button');
     move.innerText = '☰';
-    remove.innerText = '❌🗑️';
+    remove.innerText = '🗑️';
+    // cancel.innerText = '❌';
     index.innerText = item.id ? item.index+1 : 0;
     edit.innerText = '✏️';
     save.innerText = '✅';
+    actions.classList.add('actions');
     move.classList.add('move');
     remove.classList.add('remove');
+    // cancel.classList.add('cancel');
     index.classList.add('index');
     edit.classList.add('edit');
     save.classList.add('save');
@@ -226,56 +274,71 @@
       edit.classList.add('actionActive');
     } else {
       remove.classList.add('actionActive');
+      // cancel.classList.add('actionActive');
       save.classList.add('actionActive');
     }
     remove.onclick = this.removeItem;
+    // cancel.onclick = this.cancelItem;
     edit.onclick = this.editItem;
     save.onclick = this.saveItem;
     actions.appendChild(move)
     actions.appendChild(remove)
+    // actions.appendChild(cancel)
     actions.appendChild(index)
     actions.appendChild(edit)
     actions.appendChild(save)
 
     const img = document.createElement('img');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.classList.add('input');
+    input.accept = 'image/gif, image/jpeg, image/png';
     item.image && (img.src = `./${item.id}`);
     img.draggable = false;
+    img.classList.add('active');
+    !item.id && input.classList.add('active');
 
-    const content = item.id ? document.createElement('p') : document.createElement('textarea');
-    if (item.id) {
-      content.innerText = item.content;
-      content.draggable = false;
-    } else {
-      content.maxlength = "300";
-      content.value = '';
-      content.draggable = false;
-      content.style.pointerEvents = 'auto';
-    }
+    const contentP = document.createElement('p');
+    const contentTextArea = document.createElement('textarea');
+    contentTextArea.classList.add('textarea');
+    contentTextArea.maxlength = "300";
+    contentTextArea.value = '';
+    contentP.innerText = item.content || '';
+    item.id ? contentP.classList.add('active') : contentTextArea.classList.add('active');
 
     const li = document.createElement('li');
     li.appendChild(actions)
     li.appendChild(img)
-    li.appendChild(content)
-    item.id && (li.id = item.id);
-    li.draggable = 'true';
+    li.appendChild(input)
+    li.appendChild(contentP)
+    li.appendChild(contentTextArea)
+    if (item.id) {
+      li.id = item.id;
+      move.draggable = 'true';
+    }
     li.ondragstart = this.onDragStart;
     li.ondragenter = this.onDragEnter;
     li.ondragover = this.onDragOver;
     li.ondragleave = this.onDragLeave;
     li.ondrop = this.onDrop;
+    li.ondragend = this.onDragEnd;
     item.id ? list.children[item.index].replaceWith(li) : list.insertBefore(li, list.children[0]);
 
+    childrenDeep(li).forEach(element => {
+      if ([...element.classList].includes('move')) return;
+      makeUnselectable(element);
+    })
     !item.id && setNotification(`New step has been created.`, 'green');
   }
 
   function elementToObject(element) {
-    const allSavedItems = [...document.getElementById('list').children].filter(element => element.id);
+    const allSavedItems = () => [...document.getElementById('list').children].filter(element => element.id);
 
     return {
       id: element.id || UUID4(),
       content: element.querySelector('p').innerText,
       image: element.querySelector('img').src ? true : false,
-      index: element.id ? allSavedItems.indexOf(element) : allSavedItems.length
+      index: element.id ? allSavedItems().indexOf(element) : allSavedItems().length
     }
   }
 
@@ -285,161 +348,123 @@
     const remove = itemToEdit.querySelector('.remove');
     const edit = itemToEdit.querySelector('.edit');
     const save = itemToEdit.querySelector('.save');
-
     move.classList.toggle('actionActive')
     remove.classList.toggle('actionActive')
     edit.classList.toggle('actionActive')
     save.classList.toggle('actionActive')
 
-    const contetElement = itemToEdit.querySelector('p');
-    const contetText = contetElement.innerText;
-    const contetTextArea = document.createElement('textarea');
-    contetTextArea.maxlength = "300";
-    contetTextArea.style.pointerEvents = 'auto';
-    contetTextArea.value = contetText;
-    contetElement.replaceWith(contetTextArea);
+    const input = itemToEdit.querySelector('input');
+    input.classList.toggle('active');
+
+    const contentP = itemToEdit.querySelector('p');
+    const contentTextArea = itemToEdit.querySelector('textarea');
+    contentP.classList.toggle('active')
+    contentTextArea.classList.toggle('active')
+    contentTextArea.value = contentP.innerText;
   }
 
-  function saveItem(event) {
+  async function saveItem(event) {
     const itemToSave = event.target.closest('li');
     const move = itemToSave.querySelector('.move');
     const remove = itemToSave.querySelector('.remove');
     const edit = itemToSave.querySelector('.edit');
     const save = itemToSave.querySelector('.save');
-
     move.classList.toggle('actionActive')
     remove.classList.toggle('actionActive')
     edit.classList.toggle('actionActive')
     save.classList.toggle('actionActive')
 
-    let contetTextArea = itemToSave.querySelector("textarea");
-    let contetText = contetTextArea.value;
-    let contentElement = document.createElement('p');
-    contentElement.style.pointerEvents = 'none';
-    contentElement.innerText = contetText;
-    contetTextArea.replaceWith(contentElement);
+    const input = itemToSave.querySelector('input');
+    input.classList.toggle('active');
+
+    const contentP = itemToSave.querySelector('p');
+    const contentTextArea = itemToSave.querySelector('textarea');
+    contentP.classList.toggle('active');
+    contentTextArea.classList.toggle('active');
 
     if (!itemToSave.id) {
+      contentP.innerText = contentTextArea.value;
       const itemToSend = elementToObject(itemToSave);
       itemToSave.id = itemToSend.id;
       itemToSave.parentNode.append(itemToSave);
       itemToSave.querySelector('.index').innerText = itemToSend.index+1;
-
-
-      fetch("http://localhost:3000/item", {
-        method: 'POST',
-        headers: new Headers({ "Content-Type": "application/json" }),
-        body: JSON.stringify(itemToSend),
-        redirect: 'follow'
-      })
-      .then(response => response.json())
-      .then(result => result)
-      .catch(error => error);
-    } else {
+      await doFetch('/item', 'POST', itemToSend);
+      updateCounter();
+    } else if (itemToSave.id && contentTextArea.value !== contentP.innerText) {
+      contentP.innerText = contentTextArea.value;
       const { id, ...itemToSend } = elementToObject(itemToSave);
-
-      fetch(`http://localhost:3000/item/${id}`, {
-        method: 'PUT',
-        headers: new Headers({ "Content-Type": "application/json" }),
-        body: JSON.stringify(itemToSend),
-        redirect: 'follow'
-      })
-      .then(response => response.json())
-      .then(result => result)
-      .catch(error => error);
+      await doFetch(`/item/${id}`, 'PUT', itemToSend)
     }
+    contentTextArea.value = '';
   }
 
-  function updateCounterAndIndexes(elementChangedFrom = null, elementChangedTo = null) {
-    const range = (start, end) => {
-      if (start <= end) {
-        return Array.from('x'.repeat(end - start + 1), (_, i) => start + i)
-      } else {
-        return Array.from('x'.repeat(start - end + 1), (_, i) => start - i)
-      }
-    };
+  async function updateCounterAndIndexes(elementChangedFrom = null, elementChangedTo = null) {
+    const isStart = !elementChangedFrom && !elementChangedTo;
+    const isRemoveItem = elementChangedFrom && !elementChangedTo;
+    const onDrop = elementChangedFrom && elementChangedTo;
 
-    const list = document.getElementById('list');
-    const nodes = [...list.children];
-    const allItems = [...document.getElementById('list').children].filter(element => element.id);
-    const data = allItems.filter(element => element.id);
-    const indexes = data.map(element => element.querySelector('.index'));
-    const indexChangedFrom = (elementChangedFrom && elementChangedFrom.index)|| nodes.indexOf(elementChangedFrom);
-    const indexChangedTo = (elementChangedFrom && elementChangedTo.index) || nodes.indexOf(elementChangedTo);
+    const allItems = () => [...document.getElementById('list').children].filter(element => element.id);
+    const indexes = () => allItems().map(element => element.querySelector('.index'));
 
-    if (elementChangedFrom && elementChangedTo && ((indexChangedFrom.id && indexChangedFrom !== indexChangedTo) || !indexChangedFrom.id)) {
-      let updatedIndexes;
-      let updatedItems;
+    if (onDrop || isRemoveItem) {
+      const list = document.getElementById('list');
+      const lastItemIndex = allItems().length-1;
+      const indexChangedFrom = (elementChangedFrom && ('index' in elementChangedFrom)) || allItems().indexOf(elementChangedFrom);
+      const indexChangedTo = isRemoveItem ? lastItemIndex + 1 : allItems().indexOf(elementChangedTo);
+      let updatedIndexes, updatedItems;
 
-      if (indexChangedTo === nodes.length-1) {
-        list.appendChild(elementChangedFrom);
-        updatedIndexes = range(indexChangedFrom, allItems.length-1);
-      } else {
-        if (indexChangedFrom > indexChangedTo) {
-          list.insertBefore(elementChangedFrom, elementChangedTo);
-          updatedIndexes = range(indexChangedFrom, indexChangedTo);
+      const range = (start, end) => {
+        if (start === end) {
+          return [start];
+        } else if (start < end) {
+          return Array.from('x'.repeat(end - start + 1), (_, i) => start + i)
+        } else if (start > end) {
+          return Array.from('x'.repeat(start - end + 1), (_, i) => start - i)
+        }
+      };
+
+      if (onDrop || isRemoveItem) {
+        if (indexChangedTo === lastItemIndex) {
+          list.appendChild(elementChangedFrom);
+          updatedIndexes = range(indexChangedFrom, allItems().length - 1);
         } else if (indexChangedFrom < indexChangedTo) {
-          elementChangedFrom.id && list.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
+          onDrop && list.insertBefore(elementChangedFrom, elementChangedTo.nextSibling);
+          updatedIndexes = range(indexChangedFrom, isRemoveItem ? indexChangedTo - 1 : indexChangedTo);
+        } else if (indexChangedFrom > indexChangedTo) {
+          !isRemoveItem && list.insertBefore(elementChangedFrom, elementChangedTo);
           updatedIndexes = range(indexChangedFrom, indexChangedTo);
         }
       }
 
-      // const updatedItems = [
-      //   {
-      //     idToUpdate: "4c9302c8-8955-4975-8d64-cb8aced54e78",
-      //     newIndex: 3
-      //   },
-      //   {
-      //     idToUpdate: "edd775b9-36d6-4921-80c2-64813897fab4",
-      //     newIndex: 2
-      //   }
-      // ]
-
-      //ERROR: Tomando como ejemplo updatedItemsFixed, sí anda, pero no quiere funcionar con el map, tira siempre nModified: 0.
-
-      console.log(allItems)
-      console.log(updatedIndexes)
-
-      updatedItems = updatedIndexes.map(index => ({
-        idToUpdate: allItems[index].id,
-        newIndex: index
-      }))
-
-      console.log(updatedItems)
-      fetch("http://localhost:3000/item", {
-        method: 'PATCH',
-        headers: new Headers({ "Content-Type": "application/json" }),
-        body: JSON.stringify(updatedItems),
-        redirect: 'follow'
-      })
-      .then(response => response.json())
-      .then(result => console.log(result))
-      .catch(error => error);
+      if (onDrop || (isRemoveItem && indexChangedFrom < indexChangedTo)) {
+        updatedItems = updatedIndexes.map(index => ({
+          idToUpdate: allItems()[index].id,
+          newIndex: allItems().indexOf(allItems()[index])
+        }))
+        await doFetch('/item', 'PATCH', updatedItems);
+      }
     }
 
-    indexes.forEach((indexElement, index) => {
+    indexes().forEach((indexElement, index) => {
       indexElement.innerText = index+1;
     })
+    updateCounter();
   }
 
-  function removeItem(event) {
+  async function removeItem(event) {
+    const allItems = () => [...document.getElementById('list').children].filter(element => element.id);
     const itemToDelete = event.target.closest('li');
-    const allItems = [...document.getElementById('list').children].filter(element => element.id);
-    const indexToDelete = allItems.indexOf(itemToDelete);
+    const indexToDelete = allItems().indexOf(itemToDelete);
+
+    itemToDelete.remove();
 
     if (itemToDelete.id) {
-      fetch(`http://localhost:3000/item/${itemToDelete.id}`, {
-        method: 'DELETE',
-        redirect: 'follow'
-      })
-      .then(response => response.json())
-      .then(result => console.log(result))
-      .catch(error => console.log('error', error));
+      await doFetch(`/item/${itemToDelete.id}`, 'DELETE')
+      setNotification(`Step ${indexToDelete+1} has been deleted.`, 'red');
+      updateCounterAndIndexes({index: indexToDelete});
+    } else {
+      setNotification('New step has been deleted.' , 'red');
     }
-
-    setNotification(itemToDelete.id ? `Step ${indexToDelete+1} has been deleted.` : 'New step has been deleted.' , 'red');
-    itemToDelete.remove();
-    itemToDelete.id && updateCounterAndIndexes({index: indexToDelete}, {index: allItems.length-2});
   }
 
   function setNotification(notificationMessage, status = 'green') {
@@ -474,14 +499,27 @@
     }, 2000);
   }
 
-  const start = async () => {
-    const data = await fetch("http://localhost:3000", {
-      method: 'GET',
+  async function doFetch(url, method = 'GET', body = null) {
+    return fetch(`http://localhost:3000${url}`, {
+      method: method,
+      headers: new Headers({ "Content-Type": "application/json" }),
+      body: body ? JSON.stringify(body) : null,
       redirect: 'follow'
     })
     .then(response => response.json())
     .then(result => result)
     .catch(error => error);
+  }
+
+  function updateCounter() {
+    const counter = document.getElementById('counter');
+    const allItems = [...document.getElementById('list').children].filter(element => element.id);
+
+    counter.innerText = allItems.length;
+  }
+
+  const start = async () => {
+    data = await doFetch('/').then(response => response)
 
     data.forEach(item => {
       document.getElementById('list').appendChild(document.createElement('li'));
@@ -490,9 +528,10 @@
       createNewItem(item);
     })
 
-    document.getElementById('counter').innerText = data.length;
+
+    updateCounter();
     document.getElementById('list').addEventListener("change", () => {
-      document.getElementById('counter').innerText = [...document.getElementById('list').children].filter(element => element.id).length+1;
+      updateCounter();
     });
 
     updateCounterAndIndexes();

@@ -46,7 +46,6 @@ app.post('/item', async (req, res) => {
 
 app.patch('/item', async (req, res) => {
   const itemsToUpdate = req.body
-  console.log(itemsToUpdate)
   const response = await connectMongo(updateElements, 'items', itemsToUpdate).catch(error => error)
   res.send(response)
 })
@@ -84,7 +83,7 @@ app.delete('/image/:id', async (req, res) => {
 const connectMongo = async (functionToCall, dbCollection, element) => {
   const url = 'mongodb://localhost:27017';
   const dbName = 'Stepify';
-  const client = new MongoClient(url);
+  const client = new MongoClient(url, {useUnifiedTopology: true});
 
   const response = await client.connect().then(async () => {
     const db = client.db(dbName);
