@@ -1,18 +1,23 @@
 const express = require('express');
 const MongoClient = require('mongodb').MongoClient;
-
 const app = express()
-const port = 3000
+
+const portServer = 3000
+const portClient = 5500
+const portMongoDB = 27017
+const dbName = 'Stepify';
+const dbCollection = 'items';
+
 
 app.use(express.json())
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5500");
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", `http://localhost:${portClient}`);
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header("Access-Control-Allow-Methods", "*");
   res.header("Access-Control-Max-Age", "86400");
   next();
 });
-app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
+app.listen(portServer, () => console.log(`Example app listening at http://localhost:${portServer}`))
 
 app.get('/', async (req, res) => {
   const response = await connectMongo(findElement, 'items', {}).then( items => {
@@ -62,26 +67,8 @@ app.delete('/item/:id', async (req, res) => {
   res.send(response)
 })
 
-app.get('/image/:id', async (req, res) => {
-  const imageToFind = { _id: req.params.id}
-  const response = await connectMongo(findElement, 'images', imageToFind).catch(error => error)
-  res.send(response)
-})
-
-app.put('/image/:id', async (req, res) => {
-  const imageToPut = { idToReplace: { _id: req.params.id }, replaceWith: req.body }
-  const response = await connectMongo(replaceElement, 'images', imageToPut).catch(error => error)
-  res.send(response)
-})
-
-app.delete('/image/:id', async (req, res) => {
-  const imageToDelete = { _id: req.params.id }
-  const response = await connectMongo(deleteElement, 'images', imageToDelete).catch(error => error)
-  res.send(response)
-})
-
 const connectMongo = async (functionToCall, dbCollection, element) => {
-  const url = 'mongodb://localhost:27017';
+  const url = `mongodb://localhost:${portMongoDB}`;
   const dbName = 'Stepify';
   const client = new MongoClient(url, {useUnifiedTopology: true});
 

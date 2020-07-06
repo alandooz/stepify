@@ -252,20 +252,18 @@
     const actions = document.createElement('div');
     const move = document.createElement('button');
     const remove = document.createElement('button');
-    // const cancel = document.createElement('button');
     const index = document.createElement('span');
     const edit = document.createElement('button');
     const save = document.createElement('button');
     move.innerText = '☰';
     remove.innerText = '🗑️';
-    // cancel.innerText = '❌';
+    move.draggable = 'true';
     index.innerText = item.id ? item.index+1 : 0;
     edit.innerText = '✏️';
     save.innerText = '✅';
     actions.classList.add('actions');
     move.classList.add('move');
     remove.classList.add('remove');
-    // cancel.classList.add('cancel');
     index.classList.add('index');
     edit.classList.add('edit');
     save.classList.add('save');
@@ -274,16 +272,13 @@
       edit.classList.add('actionActive');
     } else {
       remove.classList.add('actionActive');
-      // cancel.classList.add('actionActive');
       save.classList.add('actionActive');
     }
     remove.onclick = this.removeItem;
-    // cancel.onclick = this.cancelItem;
     edit.onclick = this.editItem;
     save.onclick = this.saveItem;
     actions.appendChild(move)
     actions.appendChild(remove)
-    // actions.appendChild(cancel)
     actions.appendChild(index)
     actions.appendChild(edit)
     actions.appendChild(save)
@@ -293,7 +288,8 @@
     input.type = 'file';
     input.classList.add('input');
     input.accept = 'image/gif, image/jpeg, image/png';
-    item.image && (img.src = `./${item.id}`);
+    input.onchange = loadNewImage;
+    item.image && (img.src = item.image);
     img.draggable = false;
     img.classList.add('active');
     !item.id && input.classList.add('active');
@@ -314,7 +310,6 @@
     li.appendChild(contentTextArea)
     if (item.id) {
       li.id = item.id;
-      move.draggable = 'true';
     }
     li.ondragstart = this.onDragStart;
     li.ondragenter = this.onDragEnter;
@@ -331,13 +326,40 @@
     !item.id && setNotification(`New step has been created.`, 'green');
   }
 
+  function loadNewImage(e) {
+    const itemImage = e.target.closest('li').querySelector('img');
+    const itemFile = e.target.files[0];
+    const itemTempImage = new Image(itemFile);
+
+    if (
+      e.target.files.length > 0 && (itemFile.type === 'image/gif' || itemFile.type === 'image/png' || itemFile.type === 'image/jpeg')
+    ) {
+        createImageBitmap(itemFile)
+        .then(bmp => {
+          if (bmp.width === 320 && bmp.height === 320) {
+            const reader = new FileReader();
+            reader.readAsDataURL(itemFile);
+            reader.onload = () => {
+              itemImage.src = reader.result;
+            };
+          } else {
+            e.target.value = '';
+            alert('Only GIF, PNG and JPEG 320x320 images are allowed.')
+          }
+        });
+    } else {
+      e.target.value = '';
+      alert('Only GIF, PNG and JPEG images are allowed.')
+    }
+  }
+
   function elementToObject(element) {
     const allSavedItems = () => [...document.getElementById('list').children].filter(element => element.id);
 
     return {
       id: element.id || UUID4(),
       content: element.querySelector('p').innerText,
-      image: element.querySelector('img').src ? true : false,
+      image: element.querySelector('img').src ? element.querySelector('img').src : false,
       index: element.id ? allSavedItems().indexOf(element) : allSavedItems().length
     }
   }
@@ -390,7 +412,7 @@
       itemToSave.querySelector('.index').innerText = itemToSend.index+1;
       await doFetch('/item', 'POST', itemToSend);
       updateCounter();
-    } else if (itemToSave.id && contentTextArea.value !== contentP.innerText) {
+    } else if (itemToSave.id && contentTextArea.value !== contentP.innerText || input.files.length > 0) {
       contentP.innerText = contentTextArea.value;
       const { id, ...itemToSend } = elementToObject(itemToSave);
       await doFetch(`/item/${id}`, 'PUT', itemToSend)
@@ -409,7 +431,7 @@
     if (onDrop || isRemoveItem) {
       const list = document.getElementById('list');
       const lastItemIndex = allItems().length-1;
-      const indexChangedFrom = (elementChangedFrom && ('index' in elementChangedFrom)) || allItems().indexOf(elementChangedFrom);
+      const indexChangedFrom = 'index' in elementChangedFrom  ? elementChangedFrom.index : allItems().indexOf(elementChangedFrom);
       const indexChangedTo = isRemoveItem ? lastItemIndex + 1 : allItems().indexOf(elementChangedTo);
       let updatedIndexes, updatedItems;
 
