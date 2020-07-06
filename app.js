@@ -20,7 +20,7 @@ app.use((req, res, next) => {
 app.listen(portServer, () => console.log(`Example app listening at http://localhost:${portServer}`))
 
 app.get('/', async (req, res) => {
-  const response = await connectMongo(findElement, 'items', {}).then( items => {
+  const response = await connectMongo(findElement, dbCollection, {}).then( items => {
     // Change _id from MongoDB to id to match the data structure in the front-end
     items.forEach(element => {
       if (element._id) {
@@ -45,31 +45,30 @@ app.post('/item', async (req, res) => {
     itemToAdd._id = id;
   }
 
-  const response = await connectMongo(addElement, 'items', itemToAdd).catch(error => error)
+  const response = await connectMongo(addElement, dbCollection, itemToAdd).catch(error => error)
   res.send(response)
 })
 
 app.patch('/item', async (req, res) => {
   const itemsToUpdate = req.body
-  const response = await connectMongo(updateElements, 'items', itemsToUpdate).catch(error => error)
+  const response = await connectMongo(updateElements, dbCollection, itemsToUpdate).catch(error => error)
   res.send(response)
 })
 
 app.put('/item/:id', async (req, res) => {
   const itemToPut = { idToReplace: { _id: req.params.id }, replaceWith: req.body }
-  const response = await connectMongo(replaceElement, 'items', itemToPut).catch(error => error)
+  const response = await connectMongo(replaceElement, dbCollection, itemToPut).catch(error => error)
   res.send(response)
 })
 
 app.delete('/item/:id', async (req, res) => {
   const itemToDelete = { _id: req.params.id }
-  const response = await connectMongo(deleteElement, 'items', itemToDelete).catch(error => error)
+  const response = await connectMongo(deleteElement, dbCollection, itemToDelete).catch(error => error)
   res.send(response)
 })
 
 const connectMongo = async (functionToCall, dbCollection, element) => {
   const url = `mongodb://localhost:${portMongoDB}`;
-  const dbName = 'Stepify';
   const client = new MongoClient(url, {useUnifiedTopology: true});
 
   const response = await client.connect().then(async () => {
